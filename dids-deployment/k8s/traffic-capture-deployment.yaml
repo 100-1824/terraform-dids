@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: traffic-capture
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: traffic-capture
+  template:
+    metadata:
+      labels:
+        app: traffic-capture
+    spec:
+      containers:
+      - name: traffic-capture
+        image: your_dockerhub_username/traffic-capture:v1
+        ports:
+        - containerPort: 5000

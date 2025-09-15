@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: signature-detection
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: signature-detection
+  template:
+    metadata:
+      labels:
+        app: signature-detection
+    spec:
+      containers:
+      - name: signature-detection
+        image: your_dockerhub_username/signature-detection:v1
+        ports:
+        - containerPort: 7000

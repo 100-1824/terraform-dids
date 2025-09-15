@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Dashboard | DIDS</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --primary-color: #4a6bff;
+        --secondary-color: #f5f7ff;
+        --text-color: #333;
+        --light-text: #777;
+        --error-color: #ff4d4d;
+        --success-color: #4caf50;
+        --warning-color: #ff9800;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        font-family: "Roboto", sans-serif;
+      }
+
+      body {
+        background-color: #f9f9f9;
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .admin-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        padding: 30px;
+      }
+
+      .admin-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #eee;
+      }
+
+      .admin-header h2 {
+        color: var(--primary-color);
+        font-weight: 500;
+      }
+
+      .btn {
+        padding: 10px 15px;
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: 5px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+      }
+
+      .btn-danger {
+        background-color: var(--error-color);
+      }
+
+      .btn-warning {
+        background-color: var(--warning-color);
+      }
+
+      .btn-sm {
+        padding: 5px 10px;
+        font-size: 12px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+      }
+
+      th,
+      td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+      }
+
+      th {
+        background-color: var(--secondary-color);
+        font-weight: 500;
+      }
+
+      tr:hover {
+        background-color: #f5f5f5;
+      }
+
+      .status-active {
+        color: var(--success-color);
+        font-weight: 500;
+      }
+
+      .status-inactive {
+        color: var(--error-color);
+        font-weight: 500;
+      }
+
+      .alert {
+        padding: 10px;
+        margin-bottom: 20px;
+        border-radius: 5px;
+        font-size: 14px;
+      }
+
+      .alert-error {
+        background-color: #ffebee;
+        color: var(--error-color);
+      }
+
+      .alert-success {
+        background-color: #e8f5e9;
+        color: var(--success-color);
+      }
+
+      .alert-info {
+        background-color: #e3f2fd;
+        color: #1976d2;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="admin-container">
+      <div class="admin-header">
+        <h2>Admin Dashboard</h2>
+        <a href="{{ url_for('logout') }}" class="btn">Logout</a>
+      </div>
+
+      {% with messages = get_flashed_messages(with_categories=true) %} {% if
+      messages %} {% for category, message in messages %}
+      <div class="alert alert-{{ category }}">{{ message }}</div>
+      {% endfor %} {% endif %} {% endwith %}
+
+      <h3>User Management</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Status</th>
+            <th>Created At</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for user in users %}
+          <tr>
+            <td>{{ user.username }}</td>
+            <td>{{ user.email }}</td>
+            <td>{{ user.get('role', 'user') }}</td>
+            <td
+              class="{% if user.get('active', True) %}status-active{% else %}status-inactive{% endif %}"
+            >
+              {% if user.get('active', True) %}Active{% else %}Inactive{% endif
+              %}
+            </td>
+            <td>
+              {{ user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at
+              else 'N/A' }}
+            </td>
+            <td>
+              <form
+                action="{{ url_for('toggle_user', user_id=user._id) }}"
+                method="POST"
+                style="display: inline"
+              >
+                <button type="submit" class="btn btn-sm btn-warning">
+                  {% if user.get('active', True) %}Deactivate{% else
+                  %}Activate{% endif %}
+                </button>
+              </form>
+              <form
+                action="{{ url_for('delete_user', user_id=user._id) }}"
+                method="POST"
+                style="display: inline"
+              >
+                <button
+                  type="submit"
+                  class="btn btn-sm btn-danger"
+                  onclick="return confirm('Are you sure you want to delete this user?')"
+                >
+                  Delete
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </body>
+</html>

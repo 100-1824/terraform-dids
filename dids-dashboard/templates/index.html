@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Network Security Dashboard | DIDS</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.css"
+    />
+    <style>
+      /* Loading Indicator */
+      #loading-indicator {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 3px;
+        background-color: #0d6efd;
+        z-index: 1000;
+        display: none;
+      }
+
+      /* Error Banner */
+      .error-banner {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        z-index: 999;
+        display: none;
+      }
+
+      /* User Display */
+      .user-display-container {
+        background-color: #f8f9fa;
+        padding: 15px 20px;
+        border-radius: 8px;
+        margin-bottom: 25px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      }
+
+      .user-info {
+        font-size: 1.1rem;
+      }
+
+      .user-name {
+        font-weight: 600;
+        color: #0d6efd;
+        margin-left: 5px;
+      }
+
+      /* Dashboard Cards */
+      .card {
+        margin-bottom: 20px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        border: none;
+      }
+
+      .card-header {
+        background-color: #f8f9fa;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+        font-weight: 500;
+      }
+
+      /* Traffic Table */
+      #traffic-table {
+        font-size: 0.9em;
+      }
+
+      .traffic-row:hover {
+        background-color: #f8f9fa;
+      }
+
+      /* Protocol Badges */
+      .protocol-badge {
+        font-size: 0.8em;
+        padding: 4px 8px;
+      }
+
+      /* Chart Container */
+      .chart-container {
+        position: relative;
+        height: 300px;
+        margin: 0 auto;
+        width: 80%;
+      }
+
+      .protocol-legend {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin-top: 15px;
+      }
+
+      .legend-item {
+        display: flex;
+        align-items: center;
+        margin: 5px 10px;
+        font-size: 12px;
+      }
+
+      .legend-color {
+        width: 12px;
+        height: 12px;
+        margin-right: 5px;
+        border-radius: 3px;
+      }
+
+      /* Settings Dropdown */
+      .settings-dropdown {
+        position: relative;
+        display: inline-block;
+      }
+
+      .settings-btn {
+        background: none;
+        border: none;
+        color: #6c757d;
+        cursor: pointer;
+      }
+
+      .settings-menu {
+        display: none;
+        position: absolute;
+        right: 0;
+        background-color: white;
+        min-width: 160px;
+        box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
+        z-index: 1;
+        border-radius: 5px;
+      }
+
+      .settings-menu a {
+        color: #333;
+        padding: 12px 16px;
+        text-decoration: none;
+        display: block;
+      }
+
+      .settings-menu a:hover {
+        background-color: #f8f9fa;
+      }
+
+      .settings-dropdown:hover .settings-menu {
+        display: block;
+      }
+
+      .dashboard-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #0d6efd;
+        margin-bottom: 0;
+      }
+
+      /* Capture Control Button */
+      #capture-toggle {
+        margin-left: 10px;
+      }
+
+      /* Responsive Adjustments */
+      @media (max-width: 768px) {
+        .user-display-container {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .logout-btn {
+          margin-top: 10px;
+          align-self: flex-end;
+        }
+
+        .chart-container {
+          width: 100%;
+        }
+
+        .capture-control {
+          margin-top: 10px;
+          align-self: flex-end;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="loading-indicator"></div>
+    <div class="alert alert-danger error-banner" id="error-banner">
+      <strong>Connection Error:</strong> Unable to reach the server. Trying to
+      reconnect...
+    </div>
+
+    <div class="container-fluid py-4">
+      <!-- Current User Display -->
+      <div class="user-display-container">
+        <div>
+          <h1 class="dashboard-title">Network Security Dashboard</h1>
+          <div class="user-info">
+            <span>Welcome, </span>
+            <span class="user-name" id="current-user"
+              >Loading user data...</span
+            >
+          </div>
+        </div>
+        <div class="d-flex align-items-center">
+          <div class="capture-control">
+            <button id="capture-toggle" class="btn btn-sm btn-outline-success">
+              <span id="capture-status-text">Stop Capture</span>
+            </button>
+          </div>
+          <div class="settings-dropdown">
+            <button class="btn btn-sm btn-outline-secondary settings-btn">
+              ⚙️ Settings
+            </button>
+            <div class="settings-menu">
+              <a href="{{ url_for('change_password') }}">Change Password</a>
+              <a href="/logout">Logout</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats Row -->
+      <div class="row mb-4">
+        <div class="col-md-3">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Packets/s</h5>
+              <h2 class="card-text" id="pps">0</h2>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Total Packets</h5>
+              <h2 class="card-text" id="total-packets">0</h2>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Threats Blocked</h5>
+              <h2 class="card-text" id="threats-blocked">0</h2>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Top Talker</h5>
+              <h4 class="card-text" id="top-talker">-</h4>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Content -->
+      <div class="row">
+        <!-- Traffic Visualization -->
+        <div class="col-lg-8">
+          <div class="card">
+            <div class="card-header d-flex justify-content-between">
+              <span>Live Network Traffic</span>
+              <small class="text-muted" id="last-updated"
+                >Last updated: -</small
+              >
+            </div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-hover" id="traffic-table">
+                  <thead>
+                    <tr>
+                      <th>Time</th>
+                      <th>Destination</th>
+                      <th>Source</th>
+                      <th>Protocol</th>
+                      <th>Size</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="traffic-body"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+          <!-- Protocol Distribution -->
+          <div class="card">
+            <div class="card-header">Protocol Distribution</div>
+            <div class="card-body">
+              <div
+                class="chart-container"
+                style="position: relative; height: 300px"
+              >
+                <canvas id="protocolChart"></canvas>
+              </div>
+              <div class="protocol-legend" id="protocolLegend"></div>
+            </div>
+          </div>
+
+          <!-- Threat Detections -->
+          <div class="card">
+            <div class="card-header">Recent Threats</div>
+            <div class="card-body p-0">
+              <div class="list-group list-group-flush" id="threat-list"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+
+    <script>
+      // Global variables
+      const protocolColors = {
+        TCP: "#3366cc",
+        UDP: "#ff0000",
+        ICMP: "#ff9900",
+        HTTP: "#109618",
+        HTTPS: "#990099",
+        DNS: "#0099c6",
+        SSH: "#dd4477",
+        FTP: "#66aa00",
+        TLS: "#b82e2e",
+        OTHER: "#316395",
+      };
+
+      // Initialize chart
+      const protocolCtx = document
+        .getElementById("protocolChart")
+        .getContext("2d");
+      const protocolChart = new Chart(protocolCtx, {
+        type: "doughnut",
+        data: {
+          labels: [],
+          datasets: [
+            {
+              data: [],
+              backgroundColor: [],
+              borderColor: "#fff",
+              borderWidth: 1,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function (context) {
+                  const label = context.label || "";
+                  const value = context.raw || 0;
+                  const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                  const percentage = Math.round((value / total) * 100);
+                  return `${label}: ${value} (${percentage}%)`;
+                },
+              },
+            },
+          },
+          cutout: "65%",
+          animation: {
+            animateScale: true,
+            animateRotate: true,
+          },
+        },
+      });
+
+      // Update legend
+      function updateProtocolLegend(labels, colors) {
+        const legendContainer = document.getElementById("protocolLegend");
+        legendContainer.innerHTML = "";
+        labels.forEach((label, index) => {
+          const item = document.createElement("div");
+          item.className = "legend-item d-flex align-items-center mb-1";
+          const colorBox = document.createElement("div");
+          colorBox.style.width = "15px";
+          colorBox.style.height = "15px";
+          colorBox.style.backgroundColor = colors[index];
+          colorBox.className = "me-2 rounded";
+          const labelText = document.createElement("span");
+          labelText.textContent = label;
+          item.appendChild(colorBox);
+          item.appendChild(labelText);
+          legendContainer.appendChild(item);
+        });
+      }
+
+      // Show loading indicator
+      function showLoading() {
+        document.getElementById("loading-indicator").style.display = "block";
+      }
+
+      // Hide loading indicator
+      function hideLoading() {
+        document.getElementById("loading-indicator").style.display = "none";
+      }
+
+      // Show error banner
+      function showError() {
+        document.getElementById("error-banner").style.display = "block";
+        isConnected = false;
+      }
+
+      // Hide error banner
+      function hideError() {
+        document.getElementById("error-banner").style.display = "none";
+        isConnected = true;
+        retryCount = 0;
+      }
+
+      // Enhanced fetch with error handling
+      async function safeFetch(url, options = {}) {
+        showLoading();
+        try {
+          const response = await fetch(url, options);
+          if (!response.ok) throw new Error("Network response was not ok");
+          hideError();
+          return await response.json();
+        } catch (error) {
+          console.error("Fetch error:", error);
+          showError();
+          throw error;
+        } finally {
+          hideLoading();
+        }
+      }
+
+      // Update traffic data
+      async function updateTraffic() {
+        try {
+          const data = await safeFetch("/api/traffic");
+          const tbody = document.getElementById("traffic-body");
+          tbody.innerHTML = "";
+
+          data.forEach((p) => {
+            const row = document.createElement("tr");
+            row.className = p.threat
+              ? "table-danger traffic-row"
+              : "traffic-row";
+            row.innerHTML = `
+              <td>${p.timestamp}</td>
+              <td><code>${p.source}</code></td>
+              <td><code>${p.destination}</code></td>
+              <td><span class="badge protocol-badge bg-${getProtocolColor(
+                p.protocol
+              )}">
+                  ${p.protocol}
+              </span></td>
+              <td>${p.size}</td>
+              <td>${p.threat ? "⚠️ Threat" : "✅ Normal"}</td>
+            `;
+            tbody.appendChild(row);
+          });
+
+          document.getElementById(
+            "last-updated"
+          ).textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+        } catch (error) {
+          if (retryCount < maxRetries) {
+            retryCount++;
+            setTimeout(updateTraffic, retryDelay);
+          }
+        }
+      }
+
+      // Update statistics
+      async function updateStats() {
+        try {
+          const data = await safeFetch("/api/stats");
+
+          // Update stats counters
+          document.getElementById("pps").textContent = data.pps;
+          document.getElementById("total-packets").textContent =
+            data.total_packets;
+          document.getElementById("threats-blocked").textContent =
+            data.threats_blocked;
+
+          // Update top talker
+          const topTalker = Object.entries(data.top_talkers)[0];
+          document.getElementById("top-talker").textContent = topTalker
+            ? `${topTalker[0]} (${formatBytes(topTalker[1])})`
+            : "-";
+
+          // Update protocol chart with distinct colors
+          const protocols = Object.keys(data.protocols);
+          const counts = Object.values(data.protocols);
+          const backgroundColors = protocols.map(
+            (proto) => protocolColors[proto] || protocolColors["OTHER"]
+          );
+
+          protocolChart.data.labels = protocols;
+          protocolChart.data.datasets[0].data = counts;
+          protocolChart.data.datasets[0].backgroundColor = backgroundColors;
+          protocolChart.update();
+
+          updateProtocolLegend(protocols, backgroundColors);
+        } catch (error) {
+          if (retryCount < maxRetries) {
+            retryCount++;
+            setTimeout(updateStats, retryDelay);
+          }
+        }
+      }
+
+      // Update threats list
+      async function updateThreats() {
+        try {
+          const data = await safeFetch("/api/threats");
+          const container = document.getElementById("threat-list");
+          container.innerHTML = "";
+
+          data
+            .slice()
+            .reverse()
+            .forEach((t) => {
+              const item = document.createElement("a");
+              item.className = `list-group-item list-group-item-action ${
+                t.action === "blocked"
+                  ? "list-group-item-danger"
+                  : "list-group-item-warning"
+              }`;
+              item.innerHTML = `
+                <div class="d-flex w-100 justify-content-between">
+                    <strong>${t.signature}</strong>
+                    <small>${new Date(t.timestamp).toLocaleTimeString()}</small>
+                </div>
+                <div class="text-muted">${t.source} → ${t.destination}</div>
+                <span class="badge bg-${
+                  t.action === "blocked" ? "danger" : "warning"
+                }">
+                    ${t.action.toUpperCase()}
+                </span>
+              `;
+              container.appendChild(item);
+            });
+        } catch (error) {
+          if (retryCount < maxRetries) {
+            retryCount++;
+            setTimeout(updateThreats, retryDelay);
+          }
+        }
+      }
+
+      // Helper function to get protocol color class
+      function getProtocolColor(proto) {
+        const colorMap = {
+          TCP: "primary",
+          UDP: "danger",
+          ICMP: "warning",
+          HTTP: "success",
+          HTTPS: "info",
+          DNS: "secondary",
+          SSH: "dark",
+          FTP: "light",
+          TLS: "primary",
+          OTHER: "secondary",
+        };
+        return colorMap[proto] || "dark";
+      }
+
+      // Helper function to format bytes
+      function formatBytes(bytes) {
+        if (bytes < 1024) return bytes + " B";
+        else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
+        else return (bytes / 1048576).toFixed(1) + " MB";
+      }
+
+      // Connection monitoring
+      function checkConnection() {
+        if (!isConnected && retryCount < maxRetries) {
+          fetch("/api/stats")
+            .then((response) => {
+              if (response.ok) {
+                hideError();
+                updateAll();
+              }
+            })
+            .catch(() => {
+              if (retryCount >= maxRetries) {
+                document.getElementById("error-banner").innerHTML =
+                  "<strong>Fatal Error:</strong> Maximum connection attempts reached. Please refresh the page.";
+              }
+            });
+        }
+      }
+
+      // Toggle packet capture
+      async function toggleCapture() {
+        try {
+          const response = await safeFetch("/api/capture/toggle", {
+            method: "POST",
+          });
+
+          if (response.success) {
+            const btn = document.getElementById("capture-toggle");
+            const statusText = document.getElementById("capture-status-text");
+
+            if (response.active) {
+              btn.classList.remove("btn-outline-danger");
+              btn.classList.add("btn-outline-success");
+              statusText.textContent = "Stop Capture";
+            } else {
+              btn.classList.remove("btn-outline-success");
+              btn.classList.add("btn-outline-danger");
+              statusText.textContent = "Start Capture";
+            }
+          }
+        } catch (error) {
+          console.error("Error toggling capture:", error);
+        }
+      }
+
+      // Get capture status
+      async function getCaptureStatus() {
+        try {
+          const data = await safeFetch("/api/capture/status");
+          const btn = document.getElementById("capture-toggle");
+          const statusText = document.getElementById("capture-status-text");
+
+          if (data.active) {
+            btn.classList.remove("btn-outline-danger");
+            btn.classList.add("btn-outline-success");
+            statusText.textContent = "Stop Capture";
+          } else {
+            btn.classList.remove("btn-outline-success");
+            btn.classList.add("btn-outline-danger");
+            statusText.textContent = "Start Capture";
+          }
+        } catch (error) {
+          console.error("Error getting capture status:", error);
+        }
+      }
+
+      // Update all data
+      function updateAll() {
+        updateTraffic();
+        updateStats();
+        updateThreats();
+      }
+
+      // Initial load and periodic updates
+      document.addEventListener("DOMContentLoaded", () => {
+        // Connection monitoring variables
+        let isConnected = true;
+        let retryCount = 0;
+        const maxRetries = 5;
+        const retryDelay = 3000;
+
+        // Fetch and display current user information
+        fetch("/api/current_user")
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.name) {
+              document.getElementById("current-user").textContent = data.name;
+            }
+          })
+          .catch((error) => console.error("Error fetching user data:", error));
+
+        // Initialize capture control
+        getCaptureStatus();
+        document
+          .getElementById("capture-toggle")
+          .addEventListener("click", toggleCapture);
+
+        updateAll();
+        setInterval(updateTraffic, 1000);
+        setInterval(updateStats, 2000);
+        setInterval(updateThreats, 3000);
+        setInterval(checkConnection, 5000);
+      });
+    </script>
+  </body>
+</html>

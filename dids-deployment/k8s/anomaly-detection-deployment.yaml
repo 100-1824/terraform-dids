@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: anomaly-detection
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: anomaly-detection
+  template:
+    metadata:
+      labels:
+        app: anomaly-detection
+    spec:
+      containers:
+      - name: anomaly-detection
+        image: your_dockerhub_username/anomaly-detection:v1
+        ports:
+        - containerPort: 6000
